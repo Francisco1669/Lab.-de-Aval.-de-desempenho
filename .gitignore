@@ -1,0 +1,11 @@
+ycsb-*
+results/
+*.pyc
+__pycache__/
+*.log
+*.csv
+*.json
+.DS_Store
+*.tar.gz
+.venv/
+venv/

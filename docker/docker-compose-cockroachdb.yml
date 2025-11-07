@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  cockroachdb:
+    image: cockroachdb/cockroach:latest
+    container_name: cockroachdb
+    hostname: cockroachdb
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    command: start-single-node --insecure --advertise-addr=cockroachdb:26257 --http-addr=0.0.0.0:8080
+    volumes:
+      - cockroach-data:/cockroach/cockroach-data
+    networks:
+      - benchmark-net
+
+volumes:
+  cockroach-data:
+
+networks:
+  benchmark-net:
+    driver: bridge

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  scylladb:
+    image: scylladb/scylla:latest
+    container_name: scylladb
+    hostname: scylladb
+    ports:
+      - "9042:9042"
+      - "9160:9160"
+      - "10000:10000"
+    command: --smp 2 --memory 2G --overprovisioned 1
+    volumes:
+      - scylla-data:/var/lib/scylla
+    networks:
+      - benchmark-net
+
+volumes:
+  scylla-data:
+
+networks:
+  benchmark-net:
+    driver: bridge
