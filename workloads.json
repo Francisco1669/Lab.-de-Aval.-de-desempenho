@@ -1,0 +1,129 @@
+{
+  "workloads": [
+    {
+      "name": "insert_heavy",
+      "description": "Workload focado em inserções massivas (100% INSERT) para simular ingestão de dados em alta velocidade",
+      "file": "workloads/workload_insert_heavy",
+      "parameters": {
+        "recordcount": 1000000,
+        "operationcount": 500000,
+        "readproportion": 0.0,
+        "updateproportion": 0.0,
+        "scanproportion": 0.0,
+        "insertproportion": 1.0,
+        "requestdistribution": "zipfian"
+      },
+      "use_cases": ["IoT data ingestion", "Log aggregation", "Real-time analytics"]
+    },
+    {
+      "name": "mixed_50_50",
+      "description": "Workload balanceado com 50% leituras e 50% escritas (YCSB Workload A)",
+      "file": "workloads/workload_mixed",
+      "parameters": {
+        "recordcount": 1000000,
+        "operationcount": 500000,
+        "readproportion": 0.5,
+        "updateproportion": 0.5,
+        "scanproportion": 0.0,
+        "insertproportion": 0.0,
+        "requestdistribution": "zipfian"
+      },
+      "use_cases": ["Session storage", "User profile cache", "Shopping cart"]
+    },
+    {
+      "name": "read_heavy",
+      "description": "Workload dominado por leituras (95% READ, 5% UPDATE) similar ao YCSB Workload B",
+      "file": "workloads/workload_read_heavy",
+      "parameters": {
+        "recordcount": 1000000,
+        "operationcount": 500000,
+        "readproportion": 0.95,
+        "updateproportion": 0.05,
+        "scanproportion": 0.0,
+        "insertproportion": 0.0,
+        "requestdistribution": "zipfian"
+      },
+      "use_cases": ["Photo tagging", "User timeline", "Content distribution"]
+    },
+    {
+      "name": "read_only",
+      "description": "Workload exclusivo de leituras (100% READ) similar ao YCSB Workload C",
+      "file": "workloads/workload_read_only",
+      "parameters": {
+        "recordcount": 1000000,
+        "operationcount": 500000,
+        "readproportion": 1.0,
+        "updateproportion": 0.0,
+        "scanproportion": 0.0,
+        "insertproportion": 0.0,
+        "requestdistribution": "zipfian"
+      },
+      "use_cases": ["User profile cache", "Product catalog", "CDN backend"]
+    },
+    {
+      "name": "write_heavy",
+      "description": "Workload dominado por escritas (5% READ, 95% UPDATE) similar ao YCSB Workload D",
+      "file": "workloads/workload_write_heavy",
+      "parameters": {
+        "recordcount": 1000000,
+        "operationcount": 500000,
+        "readproportion": 0.05,
+        "updateproportion": 0.95,
+        "scanproportion": 0.0,
+        "insertproportion": 0.0,
+        "requestdistribution": "latest"
+      },
+      "use_cases": ["User status updates", "Metrics collection", "Event logging"]
+    },
+    {
+      "name": "scan_heavy",
+      "description": "Workload com foco em scans (50% SCAN, 50% INSERT) similar ao YCSB Workload E",
+      "file": "workloads/workload_scan_heavy",
+      "parameters": {
+        "recordcount": 1000000,
+        "operationcount": 500000,
+        "readproportion": 0.0,
+        "updateproportion": 0.0,
+        "scanproportion": 0.5,
+        "insertproportion": 0.5,
+        "requestdistribution": "uniform",
+        "maxscanlength": 100
+      },
+      "use_cases": ["Threaded conversations", "Event logs", "Data warehousing"]
+    }
+  ],
+  "test_configurations": [
+    {
+      "name": "scalability_test",
+      "description": "Teste de escalabilidade variando número de threads",
+      "threads": [16, 32, 64, 128, 256],
+      "repetitions": 3,
+      "databases": ["cockroachdb", "scylladb"],
+      "consistency_levels": {
+        "cockroachdb": ["ACID"],
+        "scylladb": ["ONE", "QUORUM", "ALL"]
+      }
+    },
+    {
+      "name": "consistency_cost_test",
+      "description": "Teste do custo da consistência no ScyllaDB",
+      "threads": [64],
+      "repetitions": 5,
+      "databases": ["scylladb"],
+      "consistency_levels": {
+        "scylladb": ["ONE", "QUORUM", "ALL"]
+      }
+    },
+    {
+      "name": "quick_comparison",
+      "description": "Comparação rápida entre CockroachDB e ScyllaDB",
+      "threads": [32],
+      "repetitions": 3,
+      "databases": ["cockroachdb", "scylladb"],
+      "consistency_levels": {
+        "cockroachdb": ["ACID"],
+        "scylladb": ["QUORUM"]
+      }
+    }
+  ]
+}

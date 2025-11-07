@@ -5,6 +5,7 @@ __pycache__/
 *.log
 *.csv
 *.json
+!workloads.json
 .DS_Store
 *.tar.gz
 .venv/
