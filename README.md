@@ -1,6 +1,20 @@
 # Análise de Desempenho e Custo de Consistência em Sistemas de Banco de Dados Distribuídos
 
-Este projeto realiza uma avaliação experimental comparando o desempenho de CockroachDB (NewSQL) e ScyllaDB (NoSQL) sob cargas de trabalho de inserção massiva, utilizando o benchmark YCSB.
+## Objetivo
+
+Framework de benchmark automatizado para comparação experimental entre CockroachDB (NewSQL/ACID) e ScyllaDB (NoSQL/BASE), quantificando o impacto de diferentes níveis de consistência em métricas de desempenho (throughput, latência P99) e utilização de recursos (CPU, memória) sob cargas de trabalho variadas baseadas no YCSB.
+
+**Autores**: Antonio Zubiaurre, Eduardo Paim, Felipe Dresch, Vinicius Santa Catarina
+
+## Resumo Técnico
+
+Este projeto realiza uma avaliação experimental comparando o desempenho de CockroachDB (NewSQL) e ScyllaDB (NoSQL) sob cargas de trabalho de inserção massiva, utilizando o benchmark YCSB. O framework permite:
+
+- Executar testes automatizados com múltiplas configurações (threads, workloads, níveis de consistência)
+- Coletar métricas em tempo real (throughput, latência, CPU, memória)
+- Gerar análises estatísticas e visualizações comparativas
+- Identificar o "knee capacity" de cada sistema
+- Quantificar o "custo da consistência" no ScyllaDB (ONE vs QUORUM vs ALL)
 
 ## Estrutura do Projeto
 
@@ -136,11 +150,60 @@ results/TIMESTAMP/
 - **CPU Usage**: Utilização média da CPU (%)
 - **Memory Usage**: Utilização média de memória (MB)
 
+## Uso Programático (Biblioteca Python)
+
+O projeto inclui uma biblioteca Python modular (`benchmark_lib/`) para execução programática de benchmarks.
+
+### Listar Workloads Disponíveis
+
+```bash
+python3 scripts/list_workloads.py
+```
+
+### Executar Benchmark a partir de Configuração JSON
+
+```bash
+python3 run_benchmark_from_config.py quick_comparison
+```
+
+Configurações disponíveis em `workloads.json`:
+- `scalability_test`: Testa escalabilidade com múltiplos threads
+- `consistency_cost_test`: Quantifica custo da consistência
+- `quick_comparison`: Comparação rápida entre sistemas
+
+### Exemplo de Uso Programático
+
+```python
+from benchmark_lib import (
+    CockroachDBController,
+    BenchmarkRunner,
+    ResultsAnalyzer
+)
+
+db = CockroachDBController()
+db.start()
+db.create_database()
+
+runner = BenchmarkRunner()
+runner.run_cockroachdb_benchmark(
+    workload_file="workloads/workload_insert_heavy",
+    threads=32,
+    output_file="results/test.txt"
+)
+
+results = ResultsAnalyzer.parse_ycsb_output("results/test.txt")
+print(f"Throughput: {results['throughput']} ops/sec")
+
+db.stop()
+```
+
+Ver mais exemplos em `example_usage.py` e documentação completa em `benchmark_lib/README.md`.
+
 ## Personalização
 
 ### Modificar Workloads
 
-Edite os arquivos em `workloads/` para ajustar:
+Edite `workloads.json` para definir novos workloads ou modifique os arquivos em `workloads/` diretamente:
 - `recordcount`: Número de registros a carregar
 - `operationcount`: Número de operações a executar
 - Proporções de leitura/escrita/inserção
@@ -152,9 +215,11 @@ Edite `run_benchmark.sh` para ajustar:
 - `REPETITIONS`: Número de repetições por teste
 - `WORKLOAD`: Workload a utilizar
 
+Ou modifique configurações de teste em `workloads.json`.
+
 ### Adicionar Novos Níveis de Consistência
 
-Para ScyllaDB, modifique o script `run_benchmark.sh` e adicione novos testes com diferentes níveis:
+Para ScyllaDB, modifique o script `run_benchmark.sh` ou `workloads.json` e adicione novos testes com diferentes níveis:
 - ONE
 - QUORUM
 - ALL
