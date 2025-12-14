@@ -1,0 +1,25 @@
+# =============================================================================
+# YCSB Workload: Quick Test (Teste Rápido)
+# =============================================================================
+# Workload reduzido para validação rápida do setup.
+# Use workload_insert_heavy para o experimento completo.
+# =============================================================================
+
+workload=site.ycsb.workloads.CoreWorkload
+
+# Volume reduzido para teste rápido
+recordcount=10000
+operationcount=5000
+
+readallfields=true
+fieldcount=10
+fieldlength=100
+
+# 100% INSERT
+readproportion=0
+updateproportion=0
+scanproportion=0
+insertproportion=1
+
+requestdistribution=zipfian
+insertorder=ordered

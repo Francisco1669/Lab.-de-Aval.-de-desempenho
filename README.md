@@ -1,269 +1,357 @@
-# Análise de Desempenho e Custo de Consistência em Sistemas de Banco de Dados Distribuídos
+# Benchmark CockroachDB vs ScyllaDB - Ingestão Massiva de Dados
 
-## Objetivo
+[![Status](https://img.shields.io/badge/Status-Concluído-brightgreen)]()
+[![YCSB](https://img.shields.io/badge/YCSB-0.17.0-blue)]()
+[![Docker](https://img.shields.io/badge/Docker-29.1.2-blue)]()
 
-Framework de benchmark automatizado para comparação experimental entre CockroachDB (NewSQL/ACID) e ScyllaDB (NoSQL/BASE), quantificando o impacto de diferentes níveis de consistência em métricas de desempenho (throughput, latência P99) e utilização de recursos (CPU, memória) sob cargas de trabalho variadas baseadas no YCSB.
+## 🎯 Objetivo
 
-**Autores**: Antonio Zubiaurre, Eduardo Paim, Felipe Dresch, Vinicius Santa Catarina
+Framework de benchmark automatizado para comparação experimental entre **CockroachDB (NewSQL/ACID)** e **ScyllaDB (NoSQL/BASE)**, utilizando o Yahoo! Cloud Serving Benchmark (YCSB).
 
-## Resumo Técnico
+O foco principal é avaliar a **Ingestão Massiva de Dados (Insert Heavy)**, quantificando:
+- Throughput (operações/segundo)
+- Latência (P99, média)
+- Utilização de recursos (CPU, memória)
+- **Custo da consistência** (ONE vs QUORUM vs ALL)
 
-Este projeto realiza uma avaliação experimental comparando o desempenho de CockroachDB (NewSQL) e ScyllaDB (NoSQL) sob cargas de trabalho de inserção massiva, utilizando o benchmark YCSB. O framework permite:
+**Autores**: Antonio Zubiaurre, Eduardo Paim, Felipe Dresch, Vinicius Santa Catarina  
+**Instituição**: Universidade Federal do Pampa (UNIPAMPA)  
+**Disciplina**: Laboratório de Avaliação de Desempenho
 
-- Executar testes automatizados com múltiplas configurações (threads, workloads, níveis de consistência)
-- Coletar métricas em tempo real (throughput, latência, CPU, memória)
-- Gerar análises estatísticas e visualizações comparativas
-- Identificar o "knee capacity" de cada sistema
-- Quantificar o "custo da consistência" no ScyllaDB (ONE vs QUORUM vs ALL)
+---
 
-## Estrutura do Projeto
+## 📊 Resultados Principais
+
+### Experimento 1: Single-Node
+
+| SGBD | Threads | Throughput (ops/s) | Status |
+|------|---------|-------------------|--------|
+| CockroachDB | 32 | 8.807 ± 215 | **Ponto Ótimo** |
+| CockroachDB | 128 | 0 (Timeout) | ❌ FALHA |
+| ScyllaDB | 32 | 13.993 ± 229 | ✅ OK |
+| ScyllaDB | 128 | 13.982 ± 111 | ✅ OK |
+
+**Conclusão**: ScyllaDB ~2x mais rápido, CockroachDB falha em alta concorrência.
+
+### Experimento 2: Custo da Consistência (Cluster 3 nós)
+
+| Consistência | Throughput (16t) | Impacto |
+|--------------|------------------|---------|
+| ONE | 7.391 ops/s | - |
+| QUORUM | 6.315 ops/s | -14,6% |
+| ALL | 6.347 ops/s | -14,1% |
+
+**Conclusão**: ~15% de custo para garantir consistência forte.
+
+---
+
+## 📋 Pré-requisitos
+
+### Software Necessário
+- **Docker** e **Docker Compose** (versão 2.0+)
+- **Python 3.8+**
+- **Java 8+** (para YCSB)
+
+### Verificação de Instalação
+```bash
+# Verificar Docker
+docker --version
+docker-compose --version
+
+# Verificar Python
+python3 --version
+
+# Verificar Java
+java -version
+```
+
+### Instalação de Dependências (Linux)
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install -y docker.io docker-compose python3 python3-pip openjdk-11-jdk
+
+# Arch Linux
+sudo pacman -S docker docker-compose python python-pip jdk11-openjdk
+```
+
+---
+
+## 🚀 Início Rápido
+
+### 1. Clonar e Preparar
+```bash
+# Clonar repositório
+git clone <url-do-repositorio>
+cd Lab.-de-Aval.-de-desempenho
+
+# Instalar dependências Python
+pip install -r requirements.txt
+
+# Instalar YCSB (versão 0.17.0)
+./scripts/install_ycsb.sh
+# ou para Windows/compatibilidade:
+python scripts/install_ycsb.py
+```
+
+### 2. Executar Experimento Completo
+```bash
+# Experimento completo (pode demorar horas)
+python main.py
+
+# Teste rápido (validação do setup)
+python main.py --quick-test
+```
+
+### 3. Analisar Resultados
+```bash
+# Gerar gráficos e estatísticas
+python analysis/analyze_results.py
+```
+
+---
+
+## ⚙️ Configuração do Experimento
+
+### Parâmetros Principais (em `main.py`)
+
+```python
+@dataclass
+class ExperimentConfig:
+    # Bancos de dados a testar
+    databases: List[str] = ["cockroach", "scylla"]
+    
+    # Níveis de concorrência (threads)
+    # ALTERE AQUI para modificar os níveis de paralelismo
+    thread_counts: List[int] = [16, 32, 64, 128]
+    
+    # Níveis de consistência ScyllaDB
+    # ONE: Menor latência, menor consistência
+    # QUORUM: Balanceado
+    # ALL: Maior consistência, maior latência
+    scylla_consistency_levels: List[str] = ["ONE", "QUORUM", "ALL"]
+    
+    # Repetições para significância estatística
+    repetitions: int = 3
+```
+
+### Workload (em `workloads/workload_insert_heavy`)
+
+```properties
+# Número de registros a inserir (1 milhão)
+# ALTERE AQUI para modificar o volume de dados
+recordcount=1000000
+
+# 100% operações de INSERT
+insertproportion=1
+```
+
+---
+
+## � Estrutura do Projeto
 
 ```
 .
-├── analysis/
-│   ├── generate_plots.py
-│   └── aggregate_results.py
-├── config/
-│   ├── cockroachdb_config.sh
-│   └── scylladb_config.sh
+├── main.py                              # 🎯 Script principal do experimento
+├── requirements.txt                      # Dependências Python
 ├── docker/
-│   ├── docker-compose-cockroachdb.yml
-│   └── docker-compose-scylladb.yml
-├── scripts/
-│   ├── setup_cockroachdb.sh
-│   ├── setup_scylladb.sh
-│   ├── stop_cockroachdb.sh
-│   ├── stop_scylladb.sh
-│   ├── install_ycsb.sh
-│   ├── run_ycsb_cockroach.sh
-│   ├── run_ycsb_scylla.sh
-│   ├── collect_metrics.sh
-│   ├── parse_ycsb_output.py
-│   └── calculate_metrics.py
+│   ├── docker-compose-cockroachdb.yml    # CockroachDB single-node
+│   ├── docker-compose-scylladb.yml       # ScyllaDB single-node
+│   └── docker-compose-scylladb-cluster.yml # ScyllaDB cluster 3 nós (RF=3)
 ├── workloads/
-│   ├── workload_insert_heavy
-│   └── workload_mixed
+│   ├── workload_insert_heavy             # 1M registros, 100% INSERT
+│   └── workload_consistency_test         # 100K registros para cluster
+├── analysis/
+│   ├── full_statistical_analysis.py      # t-test, ANOVA, Cohen's d
+│   └── analyze_consistency_experiment.py # Análise do custo de consistência
 ├── results/
-├── run_benchmark.sh
-└── README.md
+│   ├── results.csv                       # Dados Experimento 1 (48 testes)
+│   ├── consistency_cluster_results.csv   # Dados Experimento 2 (30 testes)
+│   └── plots/                            # 7 gráficos gerados
+└── benchmark_lib/                        # Biblioteca de suporte
 ```
 
-## Pré-requisitos
+---
 
-- Docker e Docker Compose
-- Python 3.7+
-- Bash
-- Curl
-- Git
+## 🔧 Configurações de Infraestrutura
 
-## Instalação
-
-### 1. Instalar Dependências Python
-
-```bash
-pip install -r requirements.txt
+### CockroachDB (docker-compose-cockroachdb.yml)
+```yaml
+# In-memory store (2GiB) - elimina I/O de disco
+command: start-single-node --insecure --store=type=mem,size=2GiB
+ports:
+  - "26257:26257"  # SQL
+  - "8080:8080"    # Admin UI
 ```
 
-### 2. Dar Permissões de Execução aos Scripts
-
-```bash
-chmod +x run_benchmark.sh
-chmod +x scripts/*.sh
-chmod +x scripts/*.py
-chmod +x analysis/*.py
+### ScyllaDB (docker-compose-scylladb.yml)
+```yaml
+# Configuração otimizada para containers
+command: --smp 2 --memory 2G --overprovisioned 1
+ports:
+  - "9042:9042"   # CQL
+  - "9160:9160"   # Thrift
+  - "10000:10000" # REST
 ```
 
-## Execução dos Benchmarks
+---
 
-### Execução Completa Automatizada
+## 📈 Resultados
 
-Para executar todos os testes automaticamente:
+Após a execução, os resultados são salvos em:
 
-```bash
-./run_benchmark.sh
-```
-
-Este script irá:
-1. Instalar o YCSB
-2. Executar testes no CockroachDB com diferentes números de threads (16, 32, 64, 128)
-3. Executar testes no ScyllaDB com consistência ONE
-4. Executar testes no ScyllaDB com consistência QUORUM
-5. Cada configuração é repetida 3 vezes
-6. Gerar análises e gráficos dos resultados
-
-### Execução Manual
-
-#### Testar CockroachDB
-
-```bash
-bash scripts/setup_cockroachdb.sh
-
-bash scripts/run_ycsb_cockroach.sh workloads/workload_insert_heavy 32 results/cockroach_test.txt
-
-bash scripts/stop_cockroachdb.sh
-```
-
-#### Testar ScyllaDB
-
-```bash
-bash scripts/setup_scylladb.sh
-
-bash scripts/run_ycsb_scylla.sh workloads/workload_insert_heavy 32 ONE results/scylla_test.txt
-
-bash scripts/stop_scylladb.sh
-```
-
-## Análise dos Resultados
-
-Os resultados são salvos em `results/TIMESTAMP/` com a seguinte estrutura:
-
-```
-results/TIMESTAMP/
-├── cockroachdb/
-│   └── threads_X/
-│       └── rep_Y/
-│           ├── ycsb_output.txt
-│           ├── metrics.csv
-│           ├── ycsb_results.json
-│           ├── resource_metrics.json
-│           └── summary.json
-├── scylladb_ONE/
-│   └── threads_X/
-│       └── rep_Y/
-│           └── ...
-├── scylladb_QUORUM/
-│   └── threads_X/
-│       └── rep_Y/
-│           └── ...
-├── all_results.csv
-└── plots/
-    ├── throughput_vs_threads.png
-    ├── latency_p99_vs_threads.png
-    ├── resource_usage.png
-    └── comparison_table.png
-```
+| Arquivo | Descrição |
+|---------|-----------|
+| `results/results.csv` | Todos os dados coletados (detalhado) |
+| `results/benchmark_summary.csv` | Resumo com médias |
+| `results/plots/` | Gráficos de comparação |
 
 ### Métricas Coletadas
-
 - **Throughput**: Operações por segundo
-- **Latência P99**: Tempo de resposta no 99º percentil (ms)
-- **CPU Usage**: Utilização média da CPU (%)
-- **Memory Usage**: Utilização média de memória (MB)
+- **Latência P99/P95/Avg**: Em milissegundos
+- **CPU Avg**: Uso médio de CPU (%)
+- **Memory Avg**: Uso médio de memória (MB)
 
-## Uso Programático (Biblioteca Python)
+---
 
-O projeto inclui uma biblioteca Python modular (`benchmark_lib/`) para execução programática de benchmarks.
+## 🖥️ Comandos Úteis
 
-### Listar Workloads Disponíveis
-
+### Execução do Benchmark
 ```bash
-python3 scripts/list_workloads.py
+# Experimento completo
+python main.py
+
+# Apenas CockroachDB
+python main.py --databases cockroach
+
+# Apenas ScyllaDB
+python main.py --databases scylla
+
+# Threads específicas
+python main.py --threads 16,32
+
+# Menos repetições
+python main.py --repetitions 1
+
+# Consistência específica
+python main.py --consistency ONE,QUORUM
 ```
 
-### Executar Benchmark a partir de Configuração JSON
-
+### Gerenciamento de Containers
 ```bash
-python3 run_benchmark_from_config.py quick_comparison
-```
-
-Configurações disponíveis em `workloads.json`:
-- `scalability_test`: Testa escalabilidade com múltiplos threads
-- `consistency_cost_test`: Quantifica custo da consistência
-- `quick_comparison`: Comparação rápida entre sistemas
-
-### Exemplo de Uso Programático
-
-```python
-from benchmark_lib import (
-    CockroachDBController,
-    BenchmarkRunner,
-    ResultsAnalyzer
-)
-
-db = CockroachDBController()
-db.start()
-db.create_database()
-
-runner = BenchmarkRunner()
-runner.run_cockroachdb_benchmark(
-    workload_file="workloads/workload_insert_heavy",
-    threads=32,
-    output_file="results/test.txt"
-)
-
-results = ResultsAnalyzer.parse_ycsb_output("results/test.txt")
-print(f"Throughput: {results['throughput']} ops/sec")
-
-db.stop()
-```
-
-Ver mais exemplos em `example_usage.py` e documentação completa em `benchmark_lib/README.md`.
-
-## Personalização
-
-### Modificar Workloads
-
-Edite `workloads.json` para definir novos workloads ou modifique os arquivos em `workloads/` diretamente:
-- `recordcount`: Número de registros a carregar
-- `operationcount`: Número de operações a executar
-- Proporções de leitura/escrita/inserção
-
-### Modificar Parâmetros de Teste
-
-Edite `run_benchmark.sh` para ajustar:
-- `THREADS_LIST`: Lista de threads a testar
-- `REPETITIONS`: Número de repetições por teste
-- `WORKLOAD`: Workload a utilizar
-
-Ou modifique configurações de teste em `workloads.json`.
-
-### Adicionar Novos Níveis de Consistência
-
-Para ScyllaDB, modifique o script `run_benchmark.sh` ou `workloads.json` e adicione novos testes com diferentes níveis:
-- ONE
-- QUORUM
-- ALL
-- LOCAL_QUORUM
-
-## Interpretação dos Resultados
-
-### Gráficos Gerados
-
-1. **throughput_vs_threads.png**: Mostra como a vazão escala com o número de threads
-2. **latency_p99_vs_threads.png**: Mostra como a latência P99 varia com a carga
-3. **resource_usage.png**: Mostra utilização de CPU e memória
-4. **comparison_table.png**: Tabela resumo com métricas principais
-
-### Análise do "Knee Capacity"
-
-O ponto onde a latência começa a aumentar exponencialmente enquanto o throughput se estabiliza indica o knee capacity do sistema.
-
-## Troubleshooting
-
-### Porta já em uso
-
-Se encontrar erro de porta já em uso:
-
-```bash
+# Ver containers rodando
 docker ps
-docker stop <container_id>
+
+# Ver logs do CockroachDB
+docker logs cockroachdb
+
+# Ver logs do ScyllaDB
+docker logs scylladb
+
+# Parar todos os containers
+docker-compose -f docker/docker-compose-cockroachdb.yml down -v
+docker-compose -f docker/docker-compose-scylladb.yml down -v
 ```
+
+### Análise
+```bash
+# Gerar todos os gráficos
+python analysis/analyze_results.py
+
+# Especificar diretório de resultados
+python analysis/analyze_results.py --results-dir results
+```
+
+---
+
+## 🔍 Design do Experimento
+
+### Experimento 1: Single-Node (Comparação de Desempenho)
+
+| Fator | Níveis |
+|-------|--------|
+| Banco de Dados | CockroachDB, ScyllaDB |
+| Threads | 16, 32, 64, 128 |
+| Consistência | ONE, QUORUM, ALL (ScyllaDB) / ACID (CockroachDB) |
+| Repetições | 3 |
+
+**Total**: 48 testes (12 CockroachDB + 36 ScyllaDB)
+
+### Experimento 2: Cluster (Custo da Consistência)
+
+| Fator | Níveis |
+|-------|--------|
+| Cluster | ScyllaDB 3 nós (RF=3) |
+| Threads | 16, 32 |
+| Consistência | ONE, QUORUM, ALL |
+| Repetições | 5 |
+
+**Total**: 30 testes
+
+---
+
+## ⚠️ Solução de Problemas
 
 ### YCSB não encontrado
-
 ```bash
-bash scripts/install_ycsb.sh
+# Instalar YCSB
+./scripts/install_ycsb.sh
+# Verificar instalação
+ls ycsb-0.17.0/bin/ycsb
 ```
 
-### Permissões negadas
-
+### Erro de conexão com banco
 ```bash
-chmod +x run_benchmark.sh scripts/*.sh scripts/*.py analysis/*.py
+# Verificar se container está rodando
+docker ps | grep -E "cockroach|scylla"
+
+# Verificar logs
+docker logs cockroachdb
+docker logs scylladb
 ```
 
-## Autores
+### Memória insuficiente
+```yaml
+# Reduzir memória em docker-compose
+# CockroachDB: --store=type=mem,size=1GiB
+# ScyllaDB: --memory 1G
+```
 
-- Antonio Zubiaurre
-- Eduardo Paim
-- Felipe Dresch
-- Vinicius Santa Catarina
+### Java não encontrado
+```bash
+# Ubuntu/Debian
+sudo apt install openjdk-11-jdk
+
+# Arch
+sudo pacman -S jdk11-openjdk
+```
+
+---
+
+## 📚 Referências
+
+- [YCSB - Yahoo! Cloud Serving Benchmark](https://github.com/brianfrankcooper/YCSB)
+- [CockroachDB Documentation](https://www.cockroachlabs.com/docs/)
+- [ScyllaDB Documentation](https://docs.scylladb.com/)
+- [Docker Documentation](https://docs.docker.com/)
+- Cooper, B. F. et al. (2010). Benchmarking cloud serving systems with YCSB. ACM SoCC.
+- Kleppmann, M. (2017). Designing Data-Intensive Applications. O'Reilly Media.
+
+---
+
+## 🖥️ Hardware Utilizado
+
+| Componente | Especificação |
+|------------|---------------|
+| CPU | AMD Ryzen 5 4500 (6 cores, 12 threads) |
+| RAM | 16 GB DDR4 |
+| Armazenamento | Lexar NQ100 SSD 960GB |
+| SO | Arch Linux (Kernel 6.12.62-1-lts) |
+| Docker | 29.1.2 com cgroups v2 |
+
+---
+
+## 📝 Licença
+
+Este projeto é parte de um trabalho acadêmico da disciplina Laboratório de Avaliação de Desempenho.
+Universidade Federal do Pampa (UNIPAMPA) - 2025.

@@ -1,0 +1,98 @@
+services:
+  scylla-node1:
+    image: scylladb/scylla:latest
+    container_name: scylla-node1
+    command: >
+      --seeds=scylla-node1
+      --smp 1
+      --memory 750M
+      --overprovisioned 1
+      --developer-mode 1
+      --broadcast-address=172.20.0.2
+      --broadcast-rpc-address=172.20.0.2
+      --listen-address=172.20.0.2
+      --rpc-address=172.20.0.2
+    networks:
+      scylla-net:
+        ipv4_address: 172.20.0.2
+    ports:
+      - "9042:9042"
+    volumes:
+      - scylla-node1-data:/var/lib/scylla
+    healthcheck:
+      test: ["CMD", "cqlsh", "172.20.0.2", "-e", "describe cluster"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
+    restart: unless-stopped
+
+  scylla-node2:
+    image: scylladb/scylla:latest
+    container_name: scylla-node2
+    command: >
+      --seeds=scylla-node1
+      --smp 1
+      --memory 750M
+      --overprovisioned 1
+      --developer-mode 1
+      --broadcast-address=172.20.0.3
+      --broadcast-rpc-address=172.20.0.3
+      --listen-address=172.20.0.3
+      --rpc-address=172.20.0.3
+    networks:
+      scylla-net:
+        ipv4_address: 172.20.0.3
+    volumes:
+      - scylla-node2-data:/var/lib/scylla
+    depends_on:
+      scylla-node1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "cqlsh", "172.20.0.3", "-e", "describe cluster"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
+    restart: unless-stopped
+
+  scylla-node3:
+    image: scylladb/scylla:latest
+    container_name: scylla-node3
+    command: >
+      --seeds=scylla-node1
+      --smp 1
+      --memory 750M
+      --overprovisioned 1
+      --developer-mode 1
+      --broadcast-address=172.20.0.4
+      --broadcast-rpc-address=172.20.0.4
+      --listen-address=172.20.0.4
+      --rpc-address=172.20.0.4
+    networks:
+      scylla-net:
+        ipv4_address: 172.20.0.4
+    volumes:
+      - scylla-node3-data:/var/lib/scylla
+    depends_on:
+      scylla-node2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "cqlsh", "172.20.0.4", "-e", "describe cluster"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
+    restart: unless-stopped
+
+networks:
+  scylla-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  scylla-node1-data:
+  scylla-node2-data:
+  scylla-node3-data:

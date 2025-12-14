@@ -1,12 +1,51 @@
-recordcount=1000000
-operationcount=500000
+# =============================================================================
+# YCSB Workload: Insert Heavy (Ingestão Massiva de Dados)
+# =============================================================================
+# Este workload é focado 100% em operações de INSERT para avaliar
+# a capacidade de ingestão massiva de dados dos bancos.
+#
+# Para alterar parâmetros:
+#   - recordcount: Número total de registros a serem inseridos
+#   - operationcount: Número de operações (para run phase)
+#   - fieldcount: Número de campos por registro
+#   - fieldlength: Tamanho de cada campo em bytes
+# =============================================================================
+
+# Workload base
 workload=site.ycsb.workloads.CoreWorkload
 
+# ===== CONFIGURAÇÃO DE VOLUME DE DADOS =====
+# Número de registros a inserir (1 milhão)
+# ALTERE AQUI para aumentar/diminuir o volume de dados
+recordcount=1000000
+
+# Número de operações para a fase 'run' (50 mil)
+operationcount=50000
+
+# ===== CONFIGURAÇÃO DOS REGISTROS =====
+# Ler todos os campos do registro
 readallfields=true
 
+# Número de campos por registro (padrão YCSB)
+fieldcount=10
+
+# Tamanho de cada campo em bytes (padrão YCSB)
+fieldlength=100
+
+# ===== PROPORÇÕES DAS OPERAÇÕES =====
+# 100% INSERT - Ingestão massiva
 readproportion=0
 updateproportion=0
 scanproportion=0
 insertproportion=1
 
+# ===== DISTRIBUIÇÃO DAS REQUISIÇÕES =====
+# Zipfian: distribuição realista com "hot spots"
 requestdistribution=zipfian
+
+# ===== CONFIGURAÇÕES ADICIONAIS =====
+# Inserir registros em ordem
+insertorder=ordered
+
+# Prefixo das chaves
+keyprefix=user

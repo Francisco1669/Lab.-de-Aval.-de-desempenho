@@ -1,0 +1,22 @@
+# Workload para teste de consistência em cluster
+# 100k registros para testes rápidos
+
+workload=site.ycsb.workloads.CoreWorkload
+
+recordcount=100000
+operationcount=100000
+
+# 100% INSERT
+readproportion=0
+updateproportion=0
+scanproportion=0
+insertproportion=1
+
+requestdistribution=zipfian
+
+# Cassandra/ScyllaDB settings
+table=usertable
+columnfamily=usertable
+
+fieldcount=10
+fieldlength=100

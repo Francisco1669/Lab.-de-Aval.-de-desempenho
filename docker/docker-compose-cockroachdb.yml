@@ -1,22 +1,38 @@
 version: '3.8'
 
+# =============================================================================
+# CockroachDB Docker Compose - Benchmark Configuration
+# =============================================================================
+# Configuração single-node com armazenamento in-memory (2GiB) para benchmarks.
+# Para alterar a memória, modifique o valor em --store=type=mem,size=XXX
+# =============================================================================
+
 services:
   cockroachdb:
     image: cockroachdb/cockroach:latest
     container_name: cockroachdb
     hostname: cockroachdb
     ports:
-      - "26257:26257"
-      - "8080:8080"
-    command: start-single-node --insecure --advertise-addr=cockroachdb:26257 --http-addr=0.0.0.0:8080
-    volumes:
-      - cockroach-data:/cockroach/cockroach-data
+      - "26257:26257"  # SQL Port (PostgreSQL wire protocol)
+      - "8081:8080"    # Admin UI (mapeado para 8081 para evitar conflito)
+    # CRÍTICO: In-memory store para eliminar I/O de disco do benchmark
+    command: >
+      start-single-node 
+      --insecure 
+      --advertise-addr=cockroachdb:26257 
+      --http-addr=0.0.0.0:8080
+      --store=type=mem,size=2GiB
     networks:
       - benchmark-net
-
-volumes:
-  cockroach-data:
+    # Health check para verificar se o banco está pronto
+    healthcheck:
+      test: ["CMD", "./cockroach", "sql", "--insecure", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 networks:
   benchmark-net:
     driver: bridge
+    name: benchmark-net

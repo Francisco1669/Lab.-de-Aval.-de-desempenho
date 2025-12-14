@@ -1,23 +1,43 @@
 version: '3.8'
 
+# =============================================================================
+# ScyllaDB Docker Compose - Benchmark Configuration
+# =============================================================================
+# Configuração single-node otimizada para benchmarks.
+# Parâmetros críticos:
+#   --smp 2        : Número de cores/shards (ajuste conforme sua CPU)
+#   --memory 2G    : Memória alocada (ajuste conforme disponível)
+#   --overprovisioned 1 : Modo para ambientes virtualizados/containers
+# =============================================================================
+
 services:
   scylladb:
     image: scylladb/scylla:latest
     container_name: scylladb
     hostname: scylladb
     ports:
-      - "9042:9042"
-      - "9160:9160"
-      - "10000:10000"
+      - "9042:9042"   # CQL Native Transport
+      - "9160:9160"   # Thrift (legacy)
+      - "10000:10000" # REST API
+    # CRÍTICO: Parâmetros de otimização para container
     command: --smp 2 --memory 2G --overprovisioned 1
     volumes:
       - scylla-data:/var/lib/scylla
     networks:
       - benchmark-net
+    # Health check para verificar se o banco está pronto
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'DESCRIBE KEYSPACES' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
 
 volumes:
   scylla-data:
+    driver: local
 
 networks:
   benchmark-net:
     driver: bridge
+    name: benchmark-net
